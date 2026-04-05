@@ -4,13 +4,17 @@ const router = express.Router();
 // Import controller
 const pcController = require("../controllers/pcController");
 
-// Get all PCs
+// ===============================
+// ROUTES
+// ===============================
+
+// GET all PCs
 router.get("/", pcController.getAllPCs);
 
-// Add new PC
+// ADD new PC
 router.post("/", pcController.addPC);
 
-// Update PC location
-router.put("/:id/location", pcController.updateLocation);
+// UPDATE PC location
+router.put("/:id", pcController.updateLocation);
 
 module.exports = router;
