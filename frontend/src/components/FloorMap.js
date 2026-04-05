@@ -8,7 +8,16 @@ function FloorMap() {
   const [floor, setFloor] = useState("Floor 1");
 
   // ===============================
-  // ZOOM + PAN STATE
+  // FLOOR IMAGES (CLEAN VERSION)
+  // ===============================
+  const floorImages = {
+    "Floor 1": "/floor1.png",
+    "Floor 2": "/floor2.png",
+    "Floor 3": "/floor3.png"
+  };
+
+  // ===============================
+  // ZOOM + PAN
   // ===============================
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -29,7 +38,7 @@ function FloorMap() {
   }, []);
 
   // ===============================
-  // ZOOM (SCROLL)
+  // ZOOM
   // ===============================
   const handleWheel = (e) => {
     e.preventDefault();
@@ -44,10 +53,9 @@ function FloorMap() {
   };
 
   // ===============================
-  // PAN MAP
+  // PAN
   // ===============================
   const handleMouseDown = (e) => {
-    // ignore if clicking marker
     if (e.target.tagName !== "IMG") return;
 
     setDraggingMap(true);
@@ -66,12 +74,10 @@ function FloorMap() {
     });
   };
 
-  const handleMouseUp = () => {
-    setDraggingMap(false);
-  };
+  const handleMouseUp = () => setDraggingMap(false);
 
   // ===============================
-  // ADD PC FORM
+  // FORM
   // ===============================
   const [showForm, setShowForm] = useState(false);
   const [clickPosition, setClickPosition] = useState({ x: 0, y: 0 });
@@ -119,11 +125,13 @@ function FloorMap() {
     });
 
     setShowForm(false);
+    setFormData({ hostname: "", ip_address: "", desk_id: "" });
+
     fetchData();
   };
 
   // ===============================
-  // DRAG & DROP (FIXED FOR ZOOM)
+  // DRAG & DROP
   // ===============================
   const handleDrop = async (e) => {
 
@@ -139,10 +147,7 @@ function FloorMap() {
     await fetch(`http://localhost:5000/api/pcs/${pcId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        x_position: x,
-        y_position: y
-      })
+      body: JSON.stringify({ x_position: x, y_position: y })
     });
 
     fetchData();
@@ -158,7 +163,7 @@ function FloorMap() {
   return (
     <div>
 
-      {/* FLOOR SELECTOR */}
+      {/* FLOOR SELECT */}
       <select value={floor} onChange={(e) => setFloor(e.target.value)}>
         <option>Floor 1</option>
         <option>Floor 2</option>
@@ -189,7 +194,7 @@ function FloorMap() {
         onMouseLeave={handleMouseUp}
       >
 
-        {/* TRANSFORM LAYER */}
+        {/* TRANSFORM */}
         <div
           style={{
             transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
@@ -202,7 +207,7 @@ function FloorMap() {
 
           {/* IMAGE */}
           <img
-            src="/floorplan.png"
+            src={floorImages[floor] || "/floor1.png"}
             alt="Floor Plan"
             style={{ width: "800px" }}
             onClick={handleMapClick}
