@@ -4,59 +4,72 @@ import PcMarker from "./PcMarker";
 function FloorMap() {
 
   // ===============================
-  // STATE: store list of PCs
+  // STATE
   // ===============================
   const [pcs, setPcs] = useState([]);
 
+  // Form state
+  const [showForm, setShowForm] = useState(false);
+  const [clickPosition, setClickPosition] = useState({ x: 0, y: 0 });
+
+  const [formData, setFormData] = useState({
+    hostname: "",
+    ip_address: "",
+    desk_id: ""
+  });
+
   // ===============================
-  // FETCH PCs FROM BACKEND
-  // Runs once when component loads
+  // FETCH PCs
   // ===============================
   useEffect(() => {
-
     fetch("http://localhost:5000/api/pcs")
       .then(res => res.json())
-      .then(data => {
-        setPcs(data);
-      })
-      .catch(err => console.error("Error fetching PCs:", err));
-
+      .then(data => setPcs(data));
   }, []);
 
   // ===============================
-  // HANDLE CLICK ON FLOOR MAP
+  // HANDLE MAP CLICK
   // ===============================
   const handleMapClick = (e) => {
 
-    // Only allow clicks on image (ignore markers/popups)
     if (e.target.tagName !== "IMG") return;
 
     const rect = e.target.getBoundingClientRect();
 
-    // Calculate click position relative to image
     const x = Math.floor(e.clientX - rect.left);
     const y = Math.floor(e.clientY - rect.top);
 
-    // Add new PC
-    addPC(x, y);
+    // Save click position
+    setClickPosition({ x, y });
+
+    // Show form
+    setShowForm(true);
   };
 
   // ===============================
-  // ADD NEW PC (POST REQUEST)
+  // HANDLE INPUT CHANGE
   // ===============================
-  const addPC = async (x, y) => {
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  // ===============================
+  // SUBMIT FORM
+  // ===============================
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
     const newPC = {
-      hostname: "NEW-PC",        // placeholder (next step = form)
-      ip_address: "192.168.1.200",
-      desk_id: "D2",
+      ...formData,
       status: "online",
-      x_position: x,
-      y_position: y
+      x_position: clickPosition.x,
+      y_position: clickPosition.y
     };
 
     try {
-      // Send POST request
       await fetch("http://localhost:5000/api/pcs", {
         method: "POST",
         headers: {
@@ -65,12 +78,18 @@ function FloorMap() {
         body: JSON.stringify(newPC)
       });
 
-      // Fetch updated data
+      // Refresh PCs
       const res = await fetch("http://localhost:5000/api/pcs");
       const data = await res.json();
-
-      // Update UI
       setPcs(data);
+
+      // Reset form
+      setShowForm(false);
+      setFormData({
+        hostname: "",
+        ip_address: "",
+        desk_id: ""
+      });
 
     } catch (err) {
       console.error("Error adding PC:", err);
@@ -78,55 +97,89 @@ function FloorMap() {
   };
 
   // ===============================
-  // RENDER COMPONENT
+  // RENDER
   // ===============================
   return (
 
-    <div
-      style={{
-        position: "relative",   // needed for absolute positioning
-        width: "800px"          // match image width
-      }}
-    >
+    <div style={{ position: "relative", width: "800px" }}>
 
-      {/* =========================
-          FLOOR PLAN IMAGE
-      ========================== */}
+      {/* FLOOR PLAN */}
       <img
         src="/floorplan.png"
         alt="Floor Plan"
-        style={{
-          width: "100%",
-          display: "block",
-          cursor: "crosshair"
-        }}
+        style={{ width: "100%", display: "block", cursor: "crosshair" }}
         onClick={handleMapClick}
       />
 
       {/* =========================
-          PC MARKERS (CLEAN)
+          FORM POPUP
+      ========================== */}
+      {showForm && (
+        <div
+          style={{
+            position: "absolute",
+            left: clickPosition.x,
+            top: clickPosition.y,
+            backgroundColor: "white",
+            border: "1px solid black",
+            padding: "10px",
+            borderRadius: "5px",
+            zIndex: 10000
+          }}
+        >
+          <form onSubmit={handleSubmit}>
+            <div>
+              <input
+                type="text"
+                name="hostname"
+                placeholder="Hostname"
+                value={formData.hostname}
+                onChange={handleChange}
+                required
+              />
+            </div>
+
+            <div>
+              <input
+                type="text"
+                name="ip_address"
+                placeholder="IP Address"
+                value={formData.ip_address}
+                onChange={handleChange}
+                required
+              />
+            </div>
+
+            <div>
+              <input
+                type="text"
+                name="desk_id"
+                placeholder="Desk"
+                value={formData.desk_id}
+                onChange={handleChange}
+                required
+              />
+            </div>
+
+            <button type="submit">Save</button>
+          </form>
+        </div>
+      )}
+
+      {/* =========================
+          PC MARKERS
       ========================== */}
       {pcs
-        // Only show valid PCs
-        .filter(pc =>
-          pc.x_position !== null &&
-          pc.y_position !== null
-        )
-        .map(pc => {
-
-          const x = Number(pc.x_position);
-          const y = Number(pc.y_position);
-
-          return (
-            <PcMarker
-              key={pc.id}
-              x={x}
-              y={y}
-              status={pc.status}
-              pc={pc}
-            />
-          );
-        })
+        .filter(pc => pc.x_position !== null && pc.y_position !== null)
+        .map(pc => (
+          <PcMarker
+            key={pc.id}
+            x={Number(pc.x_position)}
+            y={Number(pc.y_position)}
+            status={pc.status}
+            pc={pc}
+          />
+        ))
       }
 
     </div>
