@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 
-function PcMarker({ x, y, status, pc, refresh }) {
+// PcMarker now supports highlight (for search)
+function PcMarker({ x, y, status, pc, refresh, highlight }) {
 
   const [showInfo, setShowInfo] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -12,7 +13,7 @@ function PcMarker({ x, y, status, pc, refresh }) {
   });
 
   // ===============================
-  // COLOR
+  // COLOR LOGIC
   // ===============================
   let color = "gray";
   if (status === "online") color = "green";
@@ -39,21 +40,14 @@ function PcMarker({ x, y, status, pc, refresh }) {
   // UPDATE PC
   // ===============================
   const handleUpdate = async () => {
-    try {
-      await fetch(`http://localhost:5000/api/pcs/${pc.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(formData)
-      });
+    await fetch(`http://localhost:5000/api/pcs/${pc.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData)
+    });
 
-      setEditMode(false);
-      refresh();
-
-    } catch (err) {
-      console.error(err);
-    }
+    setEditMode(false);
+    refresh();
   };
 
   // ===============================
@@ -62,39 +56,44 @@ function PcMarker({ x, y, status, pc, refresh }) {
   const handleDelete = async () => {
     if (!window.confirm("Delete this PC?")) return;
 
-    try {
-      await fetch(`http://localhost:5000/api/pcs/${pc.id}`, {
-        method: "DELETE"
-      });
+    await fetch(`http://localhost:5000/api/pcs/${pc.id}`, {
+      method: "DELETE"
+    });
 
-      refresh();
-
-    } catch (err) {
-      console.error(err);
-    }
+    refresh();
   };
 
   return (
     <>
-      {/* DOT */}
+      {/* =========================
+          PC DOT
+      ========================== */}
       <div
         draggable
         onDragStart={handleDragStart}
         onClick={() => setShowInfo(!showInfo)}
+
         style={{
           position: "absolute",
           left: x,
           top: y,
           width: "12px",
           height: "12px",
-          backgroundColor: color,
+
+          // 🔥 HIGHLIGHT LOGIC
+          // If search matches → yellow
+          // Otherwise → normal color
+          backgroundColor: highlight ? "yellow" : color,
+
           borderRadius: "50%",
           cursor: "grab",
           zIndex: 9999
         }}
       />
 
-      {/* POPUP */}
+      {/* =========================
+          POPUP
+      ========================== */}
       {showInfo && (
         <div
           style={{
@@ -109,6 +108,7 @@ function PcMarker({ x, y, status, pc, refresh }) {
             zIndex: 10000
           }}
         >
+
           {editMode ? (
             <>
               <input name="hostname" value={formData.hostname} onChange={handleChange} /><br />
@@ -129,6 +129,7 @@ function PcMarker({ x, y, status, pc, refresh }) {
               <button onClick={handleDelete}>Delete</button>
             </>
           )}
+
         </div>
       )}
     </>
