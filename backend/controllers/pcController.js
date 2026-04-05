@@ -36,16 +36,19 @@ exports.addPC = async (req, res) => {
 // UPDATE LOCATION
 // ===============================
 exports.updateLocation = async (req, res) => {
-  const { desk_id } = req.body;
+
   const { id } = req.params;
+  const { x_position, y_position } = req.body;
 
   try {
+
     await pool.query(
-      "UPDATE pcs SET desk_id=$1 WHERE id=$2",
-      [desk_id, id]
+      "UPDATE pcs SET x_position=$1, y_position=$2 WHERE id=$3",
+      [x_position, y_position, id]
     );
 
     res.send("Location updated");
+
   } catch (err) {
     console.error(err);
     res.status(500).send("Error updating location");

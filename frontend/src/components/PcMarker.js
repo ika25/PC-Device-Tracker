@@ -1,24 +1,29 @@
 import React, { useState } from "react";
 
-// PcMarker component represents a single PC dot on the map
-function PcMarker({ x, y, status, pc }) {
+// Draggable PC Marker
+function PcMarker({ x, y, status, pc, onDrop }) {
 
-  // State to control popup visibility
   const [showInfo, setShowInfo] = useState(false);
 
-  // Default color
+  // Determine color
   let color = "gray";
-
-  // Change color based on status
   if (status === "online") color = "green";
   if (status === "offline") color = "red";
 
+  // ===============================
+  // HANDLE DRAG START
+  // ===============================
+  const handleDragStart = (e) => {
+    // Save PC id so we know which one is moving
+    e.dataTransfer.setData("pcId", pc.id);
+  };
+
   return (
     <>
-      {/* =========================
-          PC DOT
-      ========================== */}
+      {/* PC DOT */}
       <div
+        draggable   // 👈 enables dragging
+        onDragStart={handleDragStart}
         onClick={() => setShowInfo(!showInfo)}
 
         style={{
@@ -29,14 +34,12 @@ function PcMarker({ x, y, status, pc }) {
           height: "12px",
           backgroundColor: color,
           borderRadius: "50%",
-          cursor: "pointer",
-          zIndex: 9999   // 🔥 VERY IMPORTANT FIX
+          cursor: "grab",
+          zIndex: 9999
         }}
       />
 
-      {/* =========================
-          POPUP
-      ========================== */}
+      {/* POPUP */}
       {showInfo && (
         <div
           style={{
@@ -48,7 +51,7 @@ function PcMarker({ x, y, status, pc }) {
             padding: "8px",
             borderRadius: "5px",
             fontSize: "12px",
-            zIndex: 10000  // 🔥 keep popup above everything
+            zIndex: 10000
           }}
         >
           <strong>{pc.hostname}</strong><br />
