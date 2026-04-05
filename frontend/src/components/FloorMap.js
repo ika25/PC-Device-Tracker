@@ -22,12 +22,13 @@ function FloorMap() {
       />
 
       {/* Render PCs */}
-      {pcs.map(pc => (
+      {pcs.map(pc => (              // Loop through all PCs from database
         <PcMarker
-          key={pc.id}
-          x={pc.x_position}
-          y={pc.y_position}
-          status={pc.status}
+          key={pc.id}              // unique key for React
+          x={pc.x_position}        // X coordinate on map
+          y={pc.y_position}        // Y coordinate on map
+          status={pc.status}       // used for color
+          pc={pc}                  // pass full object for popup
         />
       ))}
 

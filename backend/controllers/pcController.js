@@ -40,7 +40,7 @@ exports.addPC = async (req, res) => {
 
 };
 
-// ✅ MUST be OUTSIDE addPC
+// MUST be OUTSIDE addPC
 exports.updateLocation = async (req, res) => {
 
     const { desk_id } = req.body;
