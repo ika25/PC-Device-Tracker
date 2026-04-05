@@ -5,10 +5,7 @@ exports.getAllPCs = async (req, res) => {
 
     try {
 
-        // Query database
-        const result = await pool.query("SELECT * FROM pcs");
-
-        // Send data to frontend
+        const result = await pool.query('SELECT * FROM "pcs"');
         res.json(result.rows);
 
     } catch (err) {
@@ -36,7 +33,32 @@ exports.addPC = async (req, res) => {
 
     } catch (err) {
 
-        res.status(500).send(err);
+        console.error(err);
+        res.status(500).send("Error adding PC");
+
+    }
+
+};
+
+// ✅ MUST be OUTSIDE addPC
+exports.updateLocation = async (req, res) => {
+
+    const { desk_id } = req.body;
+    const { id } = req.params;
+
+    try {
+
+        await pool.query(
+            "UPDATE pcs SET desk_id=$1 WHERE id=$2",
+            [desk_id, id]
+        );
+
+        res.send("Location updated");
+
+    } catch (err) {
+
+        console.error(err);
+        res.status(500).send("Error updating location");
 
     }
 
