@@ -4,19 +4,16 @@ import PcMarker from "./PcMarker";
 function FloorMap() {
 
   const [pcs, setPcs] = useState([]);
+  const [search, setSearch] = useState("");
+  const [floor, setFloor] = useState("Floor 1");
 
   // ===============================
   // ZOOM + PAN STATE
   // ===============================
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
+  const [draggingMap, setDraggingMap] = useState(false);
   const [start, setStart] = useState({ x: 0, y: 0 });
-
-  // ===============================
-  // SEARCH
-  // ===============================
-  const [search, setSearch] = useState("");
 
   // ===============================
   // FETCH DATA
@@ -32,7 +29,7 @@ function FloorMap() {
   }, []);
 
   // ===============================
-  // ZOOM (MOUSE WHEEL)
+  // ZOOM (SCROLL)
   // ===============================
   const handleWheel = (e) => {
     e.preventDefault();
@@ -47,10 +44,13 @@ function FloorMap() {
   };
 
   // ===============================
-  // PAN (DRAG MAP)
+  // PAN MAP
   // ===============================
   const handleMouseDown = (e) => {
-    setIsDragging(true);
+    // ignore if clicking marker
+    if (e.target.tagName !== "IMG") return;
+
+    setDraggingMap(true);
     setStart({
       x: e.clientX - position.x,
       y: e.clientY - position.y
@@ -58,7 +58,7 @@ function FloorMap() {
   };
 
   const handleMouseMove = (e) => {
-    if (!isDragging) return;
+    if (!draggingMap) return;
 
     setPosition({
       x: e.clientX - start.x,
@@ -67,8 +67,90 @@ function FloorMap() {
   };
 
   const handleMouseUp = () => {
-    setIsDragging(false);
+    setDraggingMap(false);
   };
+
+  // ===============================
+  // ADD PC FORM
+  // ===============================
+  const [showForm, setShowForm] = useState(false);
+  const [clickPosition, setClickPosition] = useState({ x: 0, y: 0 });
+
+  const [formData, setFormData] = useState({
+    hostname: "",
+    ip_address: "",
+    desk_id: ""
+  });
+
+  const handleMapClick = (e) => {
+    if (e.target.tagName !== "IMG") return;
+
+    const rect = e.target.getBoundingClientRect();
+
+    const x = Math.floor((e.clientX - rect.left) / scale);
+    const y = Math.floor((e.clientY - rect.top) / scale);
+
+    setClickPosition({ x, y });
+    setShowForm(true);
+  };
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const newPC = {
+      ...formData,
+      status: "online",
+      x_position: clickPosition.x,
+      y_position: clickPosition.y,
+      floor: floor
+    };
+
+    await fetch("http://localhost:5000/api/pcs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newPC)
+    });
+
+    setShowForm(false);
+    fetchData();
+  };
+
+  // ===============================
+  // DRAG & DROP (FIXED FOR ZOOM)
+  // ===============================
+  const handleDrop = async (e) => {
+
+    e.preventDefault();
+
+    const rect = e.currentTarget.getBoundingClientRect();
+
+    const x = Math.floor((e.clientX - rect.left) / scale);
+    const y = Math.floor((e.clientY - rect.top) / scale);
+
+    const pcId = e.dataTransfer.getData("pcId");
+
+    await fetch(`http://localhost:5000/api/pcs/${pcId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        x_position: x,
+        y_position: y
+      })
+    });
+
+    fetchData();
+  };
+
+  const allowDrop = (e) => e.preventDefault();
+
+  const visiblePCs = pcs.filter(pc => pc.floor === floor);
 
   // ===============================
   // RENDER
@@ -76,23 +158,29 @@ function FloorMap() {
   return (
     <div>
 
+      {/* FLOOR SELECTOR */}
+      <select value={floor} onChange={(e) => setFloor(e.target.value)}>
+        <option>Floor 1</option>
+        <option>Floor 2</option>
+        <option>Floor 3</option>
+      </select>
+
       {/* SEARCH */}
       <input
-        type="text"
-        placeholder="Search PC..."
+        placeholder="Search..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        style={{ marginBottom: "10px", padding: "5px" }}
+        style={{ marginLeft: "10px" }}
       />
 
-      {/* MAP WRAPPER */}
+      {/* VIEWPORT */}
       <div
         style={{
           width: "800px",
           height: "500px",
           overflow: "hidden",
           border: "1px solid black",
-          cursor: isDragging ? "grabbing" : "grab"
+          cursor: draggingMap ? "grabbing" : "grab"
         }}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
@@ -101,44 +189,62 @@ function FloorMap() {
         onMouseLeave={handleMouseUp}
       >
 
-        {/* ZOOM + PAN CONTAINER */}
+        {/* TRANSFORM LAYER */}
         <div
           style={{
             transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
             transformOrigin: "top left",
             position: "relative"
           }}
+          onDrop={handleDrop}
+          onDragOver={allowDrop}
         >
 
-          {/* FLOOR PLAN */}
+          {/* IMAGE */}
           <img
             src="/floorplan.png"
             alt="Floor Plan"
-            style={{ width: "800px", display: "block" }}
+            style={{ width: "800px" }}
+            onClick={handleMapClick}
           />
 
+          {/* FORM */}
+          {showForm && (
+            <div style={{
+              position: "absolute",
+              left: clickPosition.x,
+              top: clickPosition.y,
+              background: "white",
+              padding: "10px",
+              border: "1px solid black",
+              zIndex: 10000
+            }}>
+              <form onSubmit={handleSubmit}>
+                <input name="hostname" placeholder="Hostname" onChange={handleChange} required /><br />
+                <input name="ip_address" placeholder="IP" onChange={handleChange} required /><br />
+                <input name="desk_id" placeholder="Desk" onChange={handleChange} required /><br />
+                <button type="submit">Save</button>
+              </form>
+            </div>
+          )}
+
           {/* PCS */}
-          {pcs
-            .filter(pc => pc.x_position !== null && pc.y_position !== null)
-            .map(pc => {
+          {visiblePCs.map(pc => {
 
-              const isMatch = pc.hostname
-                .toLowerCase()
-                .includes(search.toLowerCase());
+            const isMatch = pc.hostname.toLowerCase().includes(search.toLowerCase());
 
-              return (
-                <PcMarker
-                  key={pc.id}
-                  x={Number(pc.x_position)}
-                  y={Number(pc.y_position)}
-                  status={pc.status}
-                  pc={pc}
-                  refresh={fetchData}
-                  highlight={isMatch}
-                />
-              );
-            })
-          }
+            return (
+              <PcMarker
+                key={pc.id}
+                x={Number(pc.x_position)}
+                y={Number(pc.y_position)}
+                status={pc.status}
+                pc={pc}
+                refresh={fetchData}
+                highlight={isMatch}
+              />
+            );
+          })}
 
         </div>
       </div>
