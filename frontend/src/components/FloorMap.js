@@ -8,14 +8,71 @@ function FloorMap() {
   // ===============================
   // FETCH PCs
   // ===============================
+  const fetchData = async () => {
+    const res = await fetch("http://localhost:5000/api/pcs");
+    const data = await res.json();
+    setPcs(data);
+  };
+
   useEffect(() => {
-    fetch("http://localhost:5000/api/pcs")
-      .then(res => res.json())
-      .then(data => setPcs(data));
+    fetchData();
   }, []);
 
   // ===============================
-  // HANDLE DROP (WHEN PC IS MOVED)
+  // ADD PC (FORM)
+  // ===============================
+  const [showForm, setShowForm] = useState(false);
+  const [clickPosition, setClickPosition] = useState({ x: 0, y: 0 });
+
+  const [formData, setFormData] = useState({
+    hostname: "",
+    ip_address: "",
+    desk_id: ""
+  });
+
+  const handleMapClick = (e) => {
+    if (e.target.tagName !== "IMG") return;
+
+    const rect = e.target.getBoundingClientRect();
+
+    const x = Math.floor(e.clientX - rect.left);
+    const y = Math.floor(e.clientY - rect.top);
+
+    setClickPosition({ x, y });
+    setShowForm(true);
+  };
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const newPC = {
+      ...formData,
+      status: "online",
+      x_position: clickPosition.x,
+      y_position: clickPosition.y
+    };
+
+    await fetch("http://localhost:5000/api/pcs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newPC)
+    });
+
+    setShowForm(false);
+    setFormData({ hostname: "", ip_address: "", desk_id: "" });
+
+    fetchData();
+  };
+
+  // ===============================
+  // DRAG DROP
   // ===============================
   const handleDrop = async (e) => {
 
@@ -26,58 +83,57 @@ function FloorMap() {
     const x = Math.floor(e.clientX - rect.left);
     const y = Math.floor(e.clientY - rect.top);
 
-    // Get PC id from drag
     const pcId = e.dataTransfer.getData("pcId");
 
-    console.log("Moving PC:", pcId, "to", x, y);
+    await fetch(`http://localhost:5000/api/pcs/${pcId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ x_position: x, y_position: y })
+    });
 
-    try {
-      // Update DB
-      await fetch(`http://localhost:5000/api/pcs/${pcId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          x_position: x,
-          y_position: y
-        })
-      });
-
-      // Refresh data
-      const res = await fetch("http://localhost:5000/api/pcs");
-      const data = await res.json();
-      setPcs(data);
-
-    } catch (err) {
-      console.error("Error updating position:", err);
-    }
+    fetchData();
   };
 
-  // Allow dropping
-  const allowDrop = (e) => {
-    e.preventDefault();
-  };
+  const allowDrop = (e) => e.preventDefault();
 
   // ===============================
   // RENDER
   // ===============================
   return (
-
     <div
       style={{ position: "relative", width: "800px" }}
       onDrop={handleDrop}
       onDragOver={allowDrop}
     >
 
-      {/* FLOOR PLAN */}
       <img
         src="/floorplan.png"
         alt="Floor Plan"
-        style={{ width: "100%", display: "block" }}
+        style={{ width: "100%", display: "block", cursor: "crosshair" }}
+        onClick={handleMapClick}
       />
 
-      {/* PC MARKERS */}
+      {/* FORM */}
+      {showForm && (
+        <div style={{
+          position: "absolute",
+          left: clickPosition.x,
+          top: clickPosition.y,
+          background: "white",
+          border: "1px solid black",
+          padding: "10px",
+          zIndex: 10000
+        }}>
+          <form onSubmit={handleSubmit}>
+            <input name="hostname" placeholder="Hostname" onChange={handleChange} required /><br />
+            <input name="ip_address" placeholder="IP" onChange={handleChange} required /><br />
+            <input name="desk_id" placeholder="Desk" onChange={handleChange} required /><br />
+            <button type="submit">Save</button>
+          </form>
+        </div>
+      )}
+
+      {/* PCS */}
       {pcs
         .filter(pc => pc.x_position !== null && pc.y_position !== null)
         .map(pc => (
@@ -87,6 +143,7 @@ function FloorMap() {
             y={Number(pc.y_position)}
             status={pc.status}
             pc={pc}
+            refresh={fetchData}
           />
         ))
       }

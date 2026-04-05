@@ -1,31 +1,86 @@
 import React, { useState } from "react";
 
-// Draggable PC Marker
-function PcMarker({ x, y, status, pc, onDrop }) {
+function PcMarker({ x, y, status, pc, refresh }) {
 
   const [showInfo, setShowInfo] = useState(false);
+  const [editMode, setEditMode] = useState(false);
 
-  // Determine color
+  const [formData, setFormData] = useState({
+    hostname: pc.hostname,
+    ip_address: pc.ip_address,
+    desk_id: pc.desk_id
+  });
+
+  // ===============================
+  // COLOR
+  // ===============================
   let color = "gray";
   if (status === "online") color = "green";
   if (status === "offline") color = "red";
 
   // ===============================
-  // HANDLE DRAG START
+  // DRAG START
   // ===============================
   const handleDragStart = (e) => {
-    // Save PC id so we know which one is moving
     e.dataTransfer.setData("pcId", pc.id);
+  };
+
+  // ===============================
+  // INPUT CHANGE
+  // ===============================
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  // ===============================
+  // UPDATE PC
+  // ===============================
+  const handleUpdate = async () => {
+    try {
+      await fetch(`http://localhost:5000/api/pcs/${pc.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(formData)
+      });
+
+      setEditMode(false);
+      refresh();
+
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // ===============================
+  // DELETE PC
+  // ===============================
+  const handleDelete = async () => {
+    if (!window.confirm("Delete this PC?")) return;
+
+    try {
+      await fetch(`http://localhost:5000/api/pcs/${pc.id}`, {
+        method: "DELETE"
+      });
+
+      refresh();
+
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
     <>
-      {/* PC DOT */}
+      {/* DOT */}
       <div
-        draggable   // 👈 enables dragging
+        draggable
         onDragStart={handleDragStart}
         onClick={() => setShowInfo(!showInfo)}
-
         style={{
           position: "absolute",
           left: x,
@@ -48,16 +103,32 @@ function PcMarker({ x, y, status, pc, onDrop }) {
             top: y,
             backgroundColor: "white",
             border: "1px solid black",
-            padding: "8px",
+            padding: "10px",
             borderRadius: "5px",
             fontSize: "12px",
             zIndex: 10000
           }}
         >
-          <strong>{pc.hostname}</strong><br />
-          IP: {pc.ip_address}<br />
-          Desk: {pc.desk_id}<br />
-          Status: {pc.status}
+          {editMode ? (
+            <>
+              <input name="hostname" value={formData.hostname} onChange={handleChange} /><br />
+              <input name="ip_address" value={formData.ip_address} onChange={handleChange} /><br />
+              <input name="desk_id" value={formData.desk_id} onChange={handleChange} /><br />
+
+              <button onClick={handleUpdate}>Save</button>
+              <button onClick={() => setEditMode(false)}>Cancel</button>
+            </>
+          ) : (
+            <>
+              <strong>{pc.hostname}</strong><br />
+              IP: {pc.ip_address}<br />
+              Desk: {pc.desk_id}<br />
+              Status: {pc.status}<br /><br />
+
+              <button onClick={() => setEditMode(true)}>Edit</button>
+              <button onClick={handleDelete}>Delete</button>
+            </>
+          )}
         </div>
       )}
     </>
