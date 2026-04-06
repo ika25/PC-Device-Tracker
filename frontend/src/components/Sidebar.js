@@ -4,6 +4,9 @@ function Sidebar({ pcs, onDelete, onSelect, onAdd, onUpdate, selectedPC }) {
 
   const [search, setSearch] = useState("");
 
+  // ✅ NEW FILTER STATE
+  const [showOfflineOnly, setShowOfflineOnly] = useState(false);
+
   const [newDevice, setNewDevice] = useState({
     hostname: "",
     ip_address: "",
@@ -19,11 +22,18 @@ function Sidebar({ pcs, onDelete, onSelect, onAdd, onUpdate, selectedPC }) {
   const [editData, setEditData] = useState({});
 
   // ===============================
-  // FILTER
+  // FILTER DEVICES
   // ===============================
-  const filteredDevices = pcs.filter(pc =>
-    pc.hostname.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredDevices = pcs.filter(pc => {
+
+    const matchesSearch =
+      pc.hostname.toLowerCase().includes(search.toLowerCase());
+
+    const matchesStatus =
+      !showOfflineOnly || pc.status === "offline";
+
+    return matchesSearch && matchesStatus;
+  });
 
   // ===============================
   // ADD DEVICE
@@ -77,6 +87,22 @@ function Sidebar({ pcs, onDelete, onSelect, onAdd, onUpdate, selectedPC }) {
         onChange={(e) => setSearch(e.target.value)}
         style={{ width: "100%", marginBottom: "10px" }}
       />
+
+      {/* ✅ OFFLINE FILTER BUTTON */}
+      <button
+        onClick={() => setShowOfflineOnly(!showOfflineOnly)}
+        style={{
+          width: "100%",
+          marginBottom: "10px",
+          background: showOfflineOnly ? "#c0392b" : "#555",
+          color: "white",
+          padding: "5px",
+          border: "none",
+          cursor: "pointer"
+        }}
+      >
+        {showOfflineOnly ? "Showing Offline Only 🔴" : "Show Offline Only"}
+      </button>
 
       {/* ADD DEVICE */}
       <div style={{ marginBottom: "15px" }}>
@@ -216,7 +242,6 @@ function Sidebar({ pcs, onDelete, onSelect, onAdd, onUpdate, selectedPC }) {
                 </>
               ) : (
                 <>
-                  {/* HEADER */}
                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                     <span>{pc.status === "online" ? "🟢" : "🔴"}</span>
 
@@ -228,7 +253,6 @@ function Sidebar({ pcs, onDelete, onSelect, onAdd, onUpdate, selectedPC }) {
                     </strong>
                   </div>
 
-                  {/* FULL INFO */}
                   <div style={{ fontSize: "12px", marginTop: "4px" }}>
                     IP: {pc.ip_address || "N/A"}<br />
                     Desk: {pc.desk_id || "N/A"}<br />
@@ -238,7 +262,6 @@ function Sidebar({ pcs, onDelete, onSelect, onAdd, onUpdate, selectedPC }) {
                     Age: {pc.age ? pc.age + " yrs" : "N/A"}
                   </div>
 
-                  {/* ACTIONS */}
                   <div style={{ marginTop: "5px" }}>
                     <button onClick={() => startEdit(pc)}>Edit</button>
                     <button onClick={() => onDelete(pc.id)}>Delete</button>

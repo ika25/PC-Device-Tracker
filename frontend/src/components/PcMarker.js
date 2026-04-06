@@ -5,7 +5,7 @@ function PcMarker({ x, y, status, pc, refresh, isSearchMatch, isSearching }) {
   const [showInfo, setShowInfo] = useState(false);
   const [editMode, setEditMode] = useState(false);
 
-  // 🔥 UPDATED FORM DATA (includes new fields)
+  // UPDATED FORM DATA (includes new fields)
   const [formData, setFormData] = useState({
     hostname: pc.hostname,
     ip_address: pc.ip_address,
@@ -83,7 +83,10 @@ function PcMarker({ x, y, status, pc, refresh, isSearchMatch, isSearching }) {
         className="pc-marker"
         draggable
         onDragStart={handleDragStart}
-        onClick={() => setShowInfo(!showInfo)}
+        onClick={(e) => {
+          e.stopPropagation(); // prevents map click bug
+          setShowInfo(!showInfo);
+        }}
         onMouseEnter={(e) =>
           (e.currentTarget.style.transform = "translate(-50%, -50%) scale(1.2)")
         }
