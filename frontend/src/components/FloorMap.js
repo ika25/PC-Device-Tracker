@@ -8,6 +8,7 @@ function FloorMap() {
   const [search, setSearch] = useState("");
   const [floor, setFloor] = useState("Floor 1");
   const [addMode, setAddMode] = useState(false);
+  const [selectedPC, setSelectedPC] = useState(null);
 
   const [showForm, setShowForm] = useState(false);
   const [clickPosition, setClickPosition] = useState({ x: 0, y: 0 });
@@ -15,7 +16,12 @@ function FloorMap() {
   const [formData, setFormData] = useState({
     hostname: "",
     ip_address: "",
-    desk_id: ""
+    desk_id: "",
+    os: "",
+    ram: "",
+    maker: "",
+    age: "",
+    status: "online"
   });
 
   const floorImages = {
@@ -24,9 +30,6 @@ function FloorMap() {
     "Floor 3": "/floor3.png"
   };
 
-  // ===============================
-  // GRID + SNAP
-  // ===============================
   const GRID_SIZE = 20;
   const SNAP_THRESHOLD = 6;
 
@@ -35,9 +38,6 @@ function FloorMap() {
     return Math.abs(value - nearest) <= SNAP_THRESHOLD ? nearest : value;
   };
 
-  // ===============================
-  // ZOOM + PAN
-  // ===============================
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [draggingMap, setDraggingMap] = useState(false);
@@ -46,14 +46,12 @@ function FloorMap() {
   const handleWheel = (e) => {
     e.preventDefault();
     const zoomSpeed = 0.1;
-
     if (e.deltaY < 0) setScale(prev => Math.min(prev + zoomSpeed, 3));
     else setScale(prev => Math.max(prev - zoomSpeed, 0.5));
   };
 
   const handleMouseDown = (e) => {
     if (e.target.closest(".pc-marker")) return;
-
     setDraggingMap(true);
     setStart({
       x: e.clientX - position.x,
@@ -63,7 +61,6 @@ function FloorMap() {
 
   const handleMouseMove = (e) => {
     if (!draggingMap) return;
-
     setPosition({
       x: e.clientX - start.x,
       y: e.clientY - start.y
@@ -72,9 +69,6 @@ function FloorMap() {
 
   const handleMouseUp = () => setDraggingMap(false);
 
-  // ===============================
-  // FETCH
-  // ===============================
   const fetchData = async () => {
     const res = await fetch("http://localhost:5000/api/pcs");
     const data = await res.json();
@@ -85,9 +79,13 @@ function FloorMap() {
     fetchData();
   }, []);
 
-  // ===============================
-  // DELETE
-  // ===============================
+  const visiblePCs = pcs.filter(pc => pc.floor === floor);
+
+  const total = visiblePCs.length;
+  const online = visiblePCs.filter(pc => pc.status === "online").length;
+  const offline = visiblePCs.filter(pc => pc.status === "offline").length;
+  const oldDevices = visiblePCs.filter(pc => Number(pc.age) > 5).length;
+
   const handleDeleteFromSidebar = async (id) => {
     await fetch(`http://localhost:5000/api/pcs/${id}`, {
       method: "DELETE"
@@ -95,14 +93,10 @@ function FloorMap() {
     fetchData();
   };
 
-  // ===============================
-  // ADD FROM SIDEBAR
-  // ===============================
   const handleAddFromSidebar = async (device) => {
-
     const newPC = {
       ...device,
-      status: "online",
+      status: device.status || "online",
       x_position: 100,
       y_position: 100,
       floor: floor
@@ -117,11 +111,7 @@ function FloorMap() {
     fetchData();
   };
 
-  // ===============================
-  // UPDATE FROM SIDEBAR
-  // ===============================
   const handleUpdateFromSidebar = async (id, data) => {
-
     await fetch(`http://localhost:5000/api/pcs/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -132,73 +122,15 @@ function FloorMap() {
   };
 
   // ===============================
-  // ADD PC ON MAP
-  // ===============================
-  const handleMapClick = (e) => {
-
-    if (!addMode) return;
-    if (e.target.closest(".pc-marker")) return;
-
-    const rect = e.currentTarget.getBoundingClientRect();
-
-    const rawX = (e.clientX - rect.left - position.x) / scale;
-    const rawY = (e.clientY - rect.top - position.y) / scale;
-
-    const x = snapToGrid(rawX);
-    const y = snapToGrid(rawY);
-
-    setClickPosition({ x, y });
-    setShowForm(true);
-  };
-
-  // ===============================
-  // FORM
-  // ===============================
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    const newPC = {
-      ...formData,
-      status: "online",
-      x_position: Math.round(clickPosition.x),
-      y_position: Math.round(clickPosition.y),
-      floor: floor
-    };
-
-    await fetch("http://localhost:5000/api/pcs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newPC)
-    });
-
-    setShowForm(false);
-    setAddMode(false);
-    setFormData({ hostname: "", ip_address: "", desk_id: "" });
-
-    fetchData();
-  };
-
-  // ===============================
-  // DRAG & DROP
+  // ✅ DRAG & DROP RESTORED
   // ===============================
   const handleDrop = async (e) => {
-
     e.preventDefault();
 
     const rect = e.currentTarget.getBoundingClientRect();
 
-    const rawX = (e.clientX - rect.left - position.x) / scale;
-    const rawY = (e.clientY - rect.top - position.y) / scale;
-
-    const x = snapToGrid(rawX);
-    const y = snapToGrid(rawY);
+    const x = snapToGrid((e.clientX - rect.left - position.x) / scale);
+    const y = snapToGrid((e.clientY - rect.top - position.y) / scale);
 
     const pcId = e.dataTransfer.getData("pcId");
 
@@ -217,15 +149,67 @@ function FloorMap() {
   const allowDrop = (e) => e.preventDefault();
 
   // ===============================
-  // RESET
+  // ADD PC
   // ===============================
+  const handleMapClick = (e) => {
+    if (!addMode) return;
+    if (showForm) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+
+    const x = snapToGrid((e.clientX - rect.left - position.x) / scale);
+    const y = snapToGrid((e.clientY - rect.top - position.y) / scale);
+
+    setClickPosition({ x, y });
+    setShowForm(true);
+  };
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const newPC = {
+      ...formData,
+      x_position: Math.round(clickPosition.x),
+      y_position: Math.round(clickPosition.y),
+      floor: floor
+    };
+
+    await fetch("http://localhost:5000/api/pcs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newPC)
+    });
+
+    setShowForm(false);
+    setAddMode(false);
+
+    setFormData({
+      hostname: "",
+      ip_address: "",
+      desk_id: "",
+      os: "",
+      ram: "",
+      maker: "",
+      age: "",
+      status: "online"
+    });
+
+    fetchData();
+  };
+
   const resetView = () => {
     setScale(1);
     setPosition({ x: 0, y: 0 });
   };
 
   const smartReset = () => {
-    const visiblePCs = pcs.filter(pc => pc.floor === floor);
     if (visiblePCs.length === 0) return;
 
     const xs = visiblePCs.map(pc => pc.x_position);
@@ -239,25 +223,17 @@ function FloorMap() {
     const viewportWidth = 800;
     const viewportHeight = 500;
 
-    const contentWidth = Math.max(maxX - minX, 100);
-    const contentHeight = Math.max(maxY - minY, 100);
+    const scale = Math.min(
+      viewportWidth / (maxX - minX + 100),
+      viewportHeight / (maxY - minY + 100)
+    );
 
-    const scaleX = viewportWidth / (contentWidth + 100);
-    const scaleY = viewportHeight / (contentHeight + 100);
+    const x = viewportWidth / 2 - ((minX + maxX) / 2) * scale;
+    const y = viewportHeight / 2 - ((minY + maxY) / 2) * scale;
 
-    const newScale = Math.min(Math.max(Math.min(scaleX, scaleY), 0.5), 2);
-
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-
-    const x = viewportWidth / 2 - centerX * newScale;
-    const y = viewportHeight / 2 - centerY * newScale;
-
-    setScale(newScale);
+    setScale(scale);
     setPosition({ x, y });
   };
-
-  const visiblePCs = pcs.filter(pc => pc.floor === floor);
 
   return (
     <div style={{ display: "flex" }}>
@@ -265,16 +241,34 @@ function FloorMap() {
       <Sidebar
         pcs={visiblePCs}
         onDelete={handleDeleteFromSidebar}
-        onSelect={() => {}}
+        onSelect={(pc) => {
+          if (selectedPC && selectedPC.id === pc.id) setSelectedPC(null);
+          else setSelectedPC(pc);
+        }}
         onAdd={handleAddFromSidebar}
         onUpdate={handleUpdateFromSidebar}
+        selectedPC={selectedPC}
       />
 
       <div style={{ padding: "10px" }}>
 
+        {/* DASHBOARD */}
+        <div style={{
+          marginBottom: "10px",
+          padding: "8px",
+          background: "#f1f1f1",
+          borderRadius: "5px",
+          display: "flex",
+          gap: "15px"
+        }}>
+          <div><strong>Total:</strong> {total}</div>
+          <div style={{ color: "green" }}>Online: {online}</div>
+          <div style={{ color: "red" }}>Offline: {offline}</div>
+          <div style={{ color: "orange" }}>Old: {oldDevices}</div>
+        </div>
+
         {/* CONTROLS */}
         <div style={{ marginBottom: "10px" }}>
-
           <select value={floor} onChange={(e) => setFloor(e.target.value)}>
             <option>Floor 1</option>
             <option>Floor 2</option>
@@ -284,14 +278,14 @@ function FloorMap() {
           <input
             placeholder="Search..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setSelectedPC(null);
+            }}
             style={{ marginLeft: "10px" }}
           />
 
-          <button
-            onClick={() => setAddMode(!addMode)}
-            style={{ marginLeft: "10px", background: addMode ? "green" : "gray", color: "white" }}
-          >
+          <button onClick={() => setAddMode(!addMode)} style={{ marginLeft: "10px" }}>
             {addMode ? "Click map to place PC" : "Add PC"}
           </button>
 
@@ -302,7 +296,6 @@ function FloorMap() {
           <button onClick={smartReset} style={{ marginLeft: "5px" }}>
             Focus Devices
           </button>
-
         </div>
 
         {/* MAP */}
@@ -319,11 +312,7 @@ function FloorMap() {
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
-          onDoubleClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            resetView();
-          }}
+          onClick={handleMapClick}
         >
 
           <div
@@ -332,9 +321,8 @@ function FloorMap() {
               transformOrigin: "top left",
               position: "relative"
             }}
-            onDrop={handleDrop}
-            onDragOver={allowDrop}
-            onClick={handleMapClick}
+            onDrop={handleDrop}           // ✅ RESTORED
+            onDragOver={allowDrop}        // ✅ RESTORED
           >
 
             <img src={floorImages[floor]} alt="Floor" style={{ width: "800px" }} />
@@ -357,33 +345,32 @@ function FloorMap() {
                   <input name="hostname" placeholder="Hostname" onChange={handleChange} required /><br />
                   <input name="ip_address" placeholder="IP Address" onChange={handleChange} required /><br />
                   <input name="desk_id" placeholder="Desk" onChange={handleChange} required /><br />
+
+                  <select name="status" onChange={handleChange} defaultValue="online">
+                    <option value="online">Online</option>
+                    <option value="offline">Offline</option>
+                  </select><br />
+
                   <button type="submit">Save</button>
+                  <button type="button" onClick={() => setShowForm(false)}>Cancel</button>
                 </form>
               </div>
             )}
 
-            {visiblePCs.map(pc => {
-
-              const isSearchMatch =
-                search &&
-                pc.hostname.toLowerCase().includes(search.toLowerCase());
-
-              return (
-                <PcMarker
-                  key={pc.id}
-                  x={pc.x_position}
-                  y={pc.y_position}
-                  status={pc.status}
-                  pc={pc}
-                  refresh={fetchData}
-                  isSearchMatch={isSearchMatch}
-                  isSearching={search.length > 0}
-                />
-              );
-            })}
+            {visiblePCs.map(pc => (
+              <PcMarker
+                key={pc.id}
+                x={pc.x_position}
+                y={pc.y_position}
+                status={pc.status}
+                pc={pc}
+                refresh={fetchData}
+              />
+            ))}
 
           </div>
         </div>
+
       </div>
     </div>
   );

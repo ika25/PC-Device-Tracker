@@ -1,23 +1,25 @@
 import React, { useState } from "react";
 
-function Sidebar({ pcs, onDelete, onSelect, onAdd, onUpdate }) {
+function Sidebar({ pcs, onDelete, onSelect, onAdd, onUpdate, selectedPC }) {
 
-  // ===============================
-  // STATE
-  // ===============================
   const [search, setSearch] = useState("");
 
   const [newDevice, setNewDevice] = useState({
     hostname: "",
     ip_address: "",
-    desk_id: ""
+    desk_id: "",
+    os: "",
+    ram: "",
+    maker: "",
+    age: "",
+    status: "online"
   });
 
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
 
   // ===============================
-  // FILTER DEVICES
+  // FILTER
   // ===============================
   const filteredDevices = pcs.filter(pc =>
     pc.hostname.toLowerCase().includes(search.toLowerCase())
@@ -27,7 +29,6 @@ function Sidebar({ pcs, onDelete, onSelect, onAdd, onUpdate }) {
   // ADD DEVICE
   // ===============================
   const handleAdd = () => {
-
     if (!newDevice.hostname) return;
 
     onAdd(newDevice);
@@ -35,21 +36,23 @@ function Sidebar({ pcs, onDelete, onSelect, onAdd, onUpdate }) {
     setNewDevice({
       hostname: "",
       ip_address: "",
-      desk_id: ""
+      desk_id: "",
+      os: "",
+      ram: "",
+      maker: "",
+      age: "",
+      status: "online"
     });
   };
 
   // ===============================
-  // START EDIT
+  // EDIT
   // ===============================
   const startEdit = (pc) => {
     setEditingId(pc.id);
     setEditData(pc);
   };
 
-  // ===============================
-  // SAVE EDIT
-  // ===============================
   const handleUpdate = () => {
     onUpdate(editingId, editData);
     setEditingId(null);
@@ -65,19 +68,14 @@ function Sidebar({ pcs, onDelete, onSelect, onAdd, onUpdate }) {
       }}
     >
 
-      {/* TITLE */}
-      <h3 style={{ marginBottom: "10px" }}>Devices</h3>
+      <h3>Devices</h3>
 
       {/* SEARCH */}
       <input
         placeholder="Search device..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        style={{
-          width: "100%",
-          marginBottom: "10px",
-          padding: "5px"
-        }}
+        style={{ width: "100%", marginBottom: "10px" }}
       />
 
       {/* ADD DEVICE */}
@@ -89,7 +87,6 @@ function Sidebar({ pcs, onDelete, onSelect, onAdd, onUpdate }) {
           onChange={(e) =>
             setNewDevice({ ...newDevice, hostname: e.target.value })
           }
-          style={{ width: "100%", marginBottom: "5px" }}
         />
 
         <input
@@ -98,7 +95,6 @@ function Sidebar({ pcs, onDelete, onSelect, onAdd, onUpdate }) {
           onChange={(e) =>
             setNewDevice({ ...newDevice, ip_address: e.target.value })
           }
-          style={{ width: "100%", marginBottom: "5px" }}
         />
 
         <input
@@ -107,119 +103,152 @@ function Sidebar({ pcs, onDelete, onSelect, onAdd, onUpdate }) {
           onChange={(e) =>
             setNewDevice({ ...newDevice, desk_id: e.target.value })
           }
-          style={{ width: "100%", marginBottom: "5px" }}
         />
+
+        <input
+          placeholder="OS"
+          value={newDevice.os}
+          onChange={(e) =>
+            setNewDevice({ ...newDevice, os: e.target.value })
+          }
+        />
+
+        <input
+          placeholder="RAM"
+          value={newDevice.ram}
+          onChange={(e) =>
+            setNewDevice({ ...newDevice, ram: e.target.value })
+          }
+        />
+
+        <input
+          placeholder="Maker"
+          value={newDevice.maker}
+          onChange={(e) =>
+            setNewDevice({ ...newDevice, maker: e.target.value })
+          }
+        />
+
+        <input
+          placeholder="Age"
+          type="number"
+          value={newDevice.age}
+          onChange={(e) =>
+            setNewDevice({ ...newDevice, age: e.target.value })
+          }
+        />
+
+        <select
+          value={newDevice.status}
+          onChange={(e) =>
+            setNewDevice({ ...newDevice, status: e.target.value })
+          }
+          style={{ width: "100%", marginTop: "5px" }}
+        >
+          <option value="online">🟢 Online</option>
+          <option value="offline">🔴 Offline</option>
+        </select>
 
         <button
           onClick={handleAdd}
           style={{
             width: "100%",
-            padding: "5px",
+            marginTop: "5px",
             background: "#333",
-            color: "white",
-            border: "none",
-            cursor: "pointer"
+            color: "white"
           }}
         >
           Add Device
         </button>
-
       </div>
 
       {/* DEVICE LIST */}
       <div style={{ maxHeight: "400px", overflowY: "auto" }}>
-        {filteredDevices.map(pc => (
+        {filteredDevices.map(pc => {
 
-          <div
-            key={pc.id}
-            style={{
-              borderBottom: "1px solid #ddd",
-              padding: "8px"
-            }}
-          >
+          const isSelected = selectedPC && selectedPC.id === pc.id;
 
-            {editingId === pc.id ? (
-              <>
-                <input
-                  value={editData.hostname}
-                  onChange={(e) =>
-                    setEditData({ ...editData, hostname: e.target.value })
-                  }
-                  style={{ width: "100%", marginBottom: "5px" }}
-                />
+          return (
+            <div
+              key={pc.id}
+              style={{
+                borderBottom: "1px solid #ddd",
+                padding: "8px",
+                background: isSelected ? "#d0ebff" : "transparent"
+              }}
+            >
 
-                <input
-                  value={editData.ip_address}
-                  onChange={(e) =>
-                    setEditData({ ...editData, ip_address: e.target.value })
-                  }
-                  style={{ width: "100%", marginBottom: "5px" }}
-                />
-
-                <input
-                  value={editData.desk_id}
-                  onChange={(e) =>
-                    setEditData({ ...editData, desk_id: e.target.value })
-                  }
-                  style={{ width: "100%", marginBottom: "5px" }}
-                />
-
-                <button onClick={handleUpdate} style={{ marginRight: "5px" }}>
-                  Save
-                </button>
-
-                <button onClick={() => setEditingId(null)}>
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <>
-                {/* 🔥 STATUS + CLICKABLE ROW */}
-                <div
-                  onClick={() => onSelect(pc)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    cursor: "pointer",
-                    marginBottom: "4px"
-                  }}
-                >
-
-                  {/* STATUS DOT */}
-                  <div
-                    style={{
-                      width: "10px",
-                      height: "10px",
-                      borderRadius: "50%",
-                      backgroundColor: pc.status === "online" ? "green" : "red"
-                    }}
+              {editingId === pc.id ? (
+                <>
+                  <input
+                    value={editData.hostname}
+                    onChange={(e) =>
+                      setEditData({ ...editData, hostname: e.target.value })
+                    }
                   />
 
-                  <strong>{pc.hostname}</strong>
+                  <input
+                    value={editData.ip_address}
+                    onChange={(e) =>
+                      setEditData({ ...editData, ip_address: e.target.value })
+                    }
+                  />
 
-                </div>
+                  <input
+                    value={editData.desk_id}
+                    onChange={(e) =>
+                      setEditData({ ...editData, desk_id: e.target.value })
+                    }
+                  />
 
-                <small>{pc.ip_address}</small>
+                  <select
+                    value={editData.status}
+                    onChange={(e) =>
+                      setEditData({ ...editData, status: e.target.value })
+                    }
+                  >
+                    <option value="online">🟢 Online</option>
+                    <option value="offline">🔴 Offline</option>
+                  </select>
 
-                <br />
+                  <button onClick={handleUpdate}>Save</button>
+                  <button onClick={() => setEditingId(null)}>Cancel</button>
+                </>
+              ) : (
+                <>
+                  {/* HEADER */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span>{pc.status === "online" ? "🟢" : "🔴"}</span>
 
-                {/* ACTIONS */}
-                <button
-                  onClick={() => startEdit(pc)}
-                  style={{ marginRight: "5px" }}
-                >
-                  Edit
-                </button>
+                    <strong
+                      onClick={() => onSelect(pc)}
+                      style={{ cursor: "pointer" }}
+                    >
+                      {pc.hostname}
+                    </strong>
+                  </div>
 
-                <button onClick={() => onDelete(pc.id)}>
-                  Delete
-                </button>
-              </>
-            )}
+                  {/* FULL INFO */}
+                  <div style={{ fontSize: "12px", marginTop: "4px" }}>
+                    IP: {pc.ip_address || "N/A"}<br />
+                    Desk: {pc.desk_id || "N/A"}<br />
+                    OS: {pc.os || "N/A"}<br />
+                    RAM: {pc.ram || "N/A"}<br />
+                    Maker: {pc.maker || "N/A"}<br />
+                    Age: {pc.age ? pc.age + " yrs" : "N/A"}
+                  </div>
 
-          </div>
-        ))}
+                  {/* ACTIONS */}
+                  <div style={{ marginTop: "5px" }}>
+                    <button onClick={() => startEdit(pc)}>Edit</button>
+                    <button onClick={() => onDelete(pc.id)}>Delete</button>
+                  </div>
+                </>
+              )}
+
+            </div>
+          );
+        })}
       </div>
 
     </div>

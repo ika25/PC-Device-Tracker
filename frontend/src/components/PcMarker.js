@@ -5,10 +5,15 @@ function PcMarker({ x, y, status, pc, refresh, isSearchMatch, isSearching }) {
   const [showInfo, setShowInfo] = useState(false);
   const [editMode, setEditMode] = useState(false);
 
+  // 🔥 UPDATED FORM DATA (includes new fields)
   const [formData, setFormData] = useState({
     hostname: pc.hostname,
     ip_address: pc.ip_address,
-    desk_id: pc.desk_id
+    desk_id: pc.desk_id,
+    os: pc.os || "",
+    ram: pc.ram || "",
+    maker: pc.maker || "",
+    age: pc.age || ""
   });
 
   // ===============================
@@ -19,13 +24,13 @@ function PcMarker({ x, y, status, pc, refresh, isSearchMatch, isSearching }) {
   };
 
   // ===============================
-  // INPUT CHANGE
+  // INPUT CHANGE (SAFE VERSION)
   // ===============================
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       [e.target.name]: e.target.value
-    });
+    }));
   };
 
   // ===============================
@@ -56,17 +61,13 @@ function PcMarker({ x, y, status, pc, refresh, isSearchMatch, isSearching }) {
   };
 
   // ===============================
-  // GLOW LOGIC (FINAL)
+  // GLOW LOGIC
   // ===============================
   const getGlow = () => {
 
-    // 🟢 SEARCH MATCH (MAIN FOCUS)
     if (isSearchMatch) return "drop-shadow(0 0 8px lime)";
-
-    // 🟡 OTHERS WHEN SEARCHING
     if (isSearching) return "drop-shadow(0 0 5px gold)";
 
-    // NORMAL STATUS
     if (status === "online") return "drop-shadow(0 0 5px green)";
     if (status === "offline") return "drop-shadow(0 0 5px red)";
 
@@ -96,8 +97,6 @@ function PcMarker({ x, y, status, pc, refresh, isSearchMatch, isSearching }) {
           transform: "translate(-50%, -50%)",
           cursor: "grab",
           zIndex: 9999,
-
-          // 🔥 OPTIONAL FADE EFFECT
           opacity: isSearching && !isSearchMatch ? 0.4 : 1
         }}
       >
@@ -132,23 +131,15 @@ function PcMarker({ x, y, status, pc, refresh, isSearchMatch, isSearching }) {
 
           {editMode ? (
             <>
-              <input
-                name="hostname"
-                value={formData.hostname}
-                onChange={handleChange}
-              /><br />
+              <input name="hostname" value={formData.hostname} onChange={handleChange} /><br />
+              <input name="ip_address" value={formData.ip_address} onChange={handleChange} /><br />
+              <input name="desk_id" value={formData.desk_id} onChange={handleChange} /><br />
 
-              <input
-                name="ip_address"
-                value={formData.ip_address}
-                onChange={handleChange}
-              /><br />
-
-              <input
-                name="desk_id"
-                value={formData.desk_id}
-                onChange={handleChange}
-              /><br />
+              {/* 🔥 NEW FIELDS */}
+              <input name="os" value={formData.os} onChange={handleChange} placeholder="OS" /><br />
+              <input name="ram" value={formData.ram} onChange={handleChange} placeholder="RAM" /><br />
+              <input name="maker" value={formData.maker} onChange={handleChange} placeholder="Maker" /><br />
+              <input name="age" type="number" value={formData.age} onChange={handleChange} placeholder="Age" /><br />
 
               <button onClick={handleUpdate}>Save</button>
               <button onClick={() => setEditMode(false)}>Cancel</button>
@@ -158,10 +149,22 @@ function PcMarker({ x, y, status, pc, refresh, isSearchMatch, isSearching }) {
               <strong>{pc.hostname}</strong><br />
               IP: {pc.ip_address}<br />
               Desk: {pc.desk_id}<br />
-              Status: {pc.status}<br /><br />
+              Status: {pc.status}<br />
 
-              <button onClick={() => setEditMode(true)}>Edit</button>
-              <button onClick={handleDelete}>Delete</button>
+              OS: {pc.os || "N/A"}<br />
+              RAM: {pc.ram || "N/A"}<br />
+              Maker: {pc.maker || "N/A"}<br />
+              Age: {pc.age ? pc.age + " yrs" : "N/A"}<br />
+              Added: {pc.date_added ? new Date(pc.date_added).toLocaleDateString() : "N/A"}<br /><br />
+
+              {/* ACTIONS */}
+              <button onClick={() => setEditMode(true)} style={{ marginRight: "5px" }}>
+                Edit
+              </button>
+
+              <button onClick={handleDelete}>
+                Delete
+              </button>
             </>
           )}
 

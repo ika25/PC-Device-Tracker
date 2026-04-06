@@ -14,7 +14,7 @@ exports.getAllPCs = async (req, res) => {
 };
 
 // ===============================
-// ADD PC (WITH FLOOR SUPPORT)
+// ADD PC (WITH EXTRA FIELDS)
 // ===============================
 exports.addPC = async (req, res) => {
   try {
@@ -25,22 +25,33 @@ exports.addPC = async (req, res) => {
       x_position,
       y_position,
       status,
-      floor
+      floor,
+
+      // NEW FIELDS
+      os,
+      ram,
+      maker,
+      age
     } = req.body;
 
-    // Insert new PC
     await pool.query(
       `INSERT INTO pcs 
-       (hostname, ip_address, desk_id, x_position, y_position, status, floor)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+       (hostname, ip_address, desk_id, x_position, y_position, status, floor, os, ram, maker, age)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
       [
         hostname,
         ip_address,
         desk_id,
         x_position,
         y_position,
-        status || "online",   // default if not provided
-        floor || "Floor 1"    // default floor
+        status || "online",
+        floor || "Floor 1",
+
+        // NEW VALUES
+        os || null,
+        ram || null,
+        maker || null,
+        age || null
       ]
     );
 
@@ -53,7 +64,7 @@ exports.addPC = async (req, res) => {
 };
 
 // ===============================
-// UPDATE PC (EDIT + MOVE + FLOOR)
+// UPDATE PC (ADD SUPPORT FOR NEW FIELDS)
 // ===============================
 exports.updateLocation = async (req, res) => {
   try {
@@ -65,7 +76,13 @@ exports.updateLocation = async (req, res) => {
       desk_id,
       x_position,
       y_position,
-      floor
+      floor,
+
+      // NEW FIELDS
+      os,
+      ram,
+      maker,
+      age
     } = req.body;
 
     await pool.query(
@@ -76,8 +93,15 @@ exports.updateLocation = async (req, res) => {
          desk_id = COALESCE($3, desk_id),
          x_position = COALESCE($4, x_position),
          y_position = COALESCE($5, y_position),
-         floor = COALESCE($6, floor)
-       WHERE id = $7`,
+         floor = COALESCE($6, floor),
+
+         -- NEW FIELDS
+         os = COALESCE($7, os),
+         ram = COALESCE($8, ram),
+         maker = COALESCE($9, maker),
+         age = COALESCE($10, age)
+
+       WHERE id = $11`,
       [
         hostname,
         ip_address,
@@ -85,6 +109,13 @@ exports.updateLocation = async (req, res) => {
         x_position,
         y_position,
         floor,
+
+        // NEW VALUES
+        os,
+        ram,
+        maker,
+        age,
+
         id
       ]
     );
