@@ -10,14 +10,24 @@ function FloorMap() {
   const [addMode, setAddMode] = useState(false);
   const [selectedPC, setSelectedPC] = useState(null);
 
-  // FLOOR IMAGES
+  const [showForm, setShowForm] = useState(false);
+  const [clickPosition, setClickPosition] = useState({ x: 0, y: 0 });
+
+  const [formData, setFormData] = useState({
+    hostname: "",
+    ip_address: "",
+    desk_id: ""
+  });
+
   const floorImages = {
     "Floor 1": "/floor1.png",
     "Floor 2": "/floor2.png",
     "Floor 3": "/floor3.png"
   };
 
-  // GRID + SMART SNAP
+  // ===============================
+  // GRID + SNAP
+  // ===============================
   const GRID_SIZE = 20;
   const SNAP_THRESHOLD = 6;
 
@@ -26,7 +36,9 @@ function FloorMap() {
     return Math.abs(value - nearest) <= SNAP_THRESHOLD ? nearest : value;
   };
 
+  // ===============================
   // ZOOM + PAN
+  // ===============================
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [draggingMap, setDraggingMap] = useState(false);
@@ -41,7 +53,7 @@ function FloorMap() {
   };
 
   const handleMouseDown = (e) => {
-    if (e.target.tagName !== "IMG") return;
+    if (e.target.closest(".pc-marker")) return;
 
     setDraggingMap(true);
     setStart({
@@ -59,9 +71,13 @@ function FloorMap() {
     });
   };
 
-  const handleMouseUp = () => setDraggingMap(false);
+  const handleMouseUp = () => {
+    setDraggingMap(false);
+  };
 
+  // ===============================
   // FETCH
+  // ===============================
   const fetchData = async () => {
     const res = await fetch("http://localhost:5000/api/pcs");
     const data = await res.json();
@@ -72,33 +88,28 @@ function FloorMap() {
     fetchData();
   }, []);
 
-  // DELETE FROM SIDEBAR
+  // ===============================
+  // DELETE
+  // ===============================
   const handleDeleteFromSidebar = async (id) => {
     await fetch(`http://localhost:5000/api/pcs/${id}`, {
       method: "DELETE"
     });
-
     fetchData();
   };
 
-  // ADD FORM
-  const [showForm, setShowForm] = useState(false);
-  const [clickPosition, setClickPosition] = useState({ x: 0, y: 0 });
-
-  const [formData, setFormData] = useState({
-    hostname: "",
-    ip_address: "",
-    desk_id: ""
-  });
-
+  // ===============================
+  // ADD PC CLICK
+  // ===============================
   const handleMapClick = (e) => {
+
     if (!addMode) return;
-    if (e.target.tagName !== "IMG") return;
+    if (e.target.closest(".pc-marker")) return;
 
-    const rect = e.target.getBoundingClientRect();
+    const rect = e.currentTarget.getBoundingClientRect();
 
-    const rawX = (e.clientX - rect.left) / scale;
-    const rawY = (e.clientY - rect.top) / scale;
+    const rawX = (e.clientX - rect.left - position.x) / scale;
+    const rawY = (e.clientY - rect.top - position.y) / scale;
 
     const x = snapToGrid(rawX);
     const y = snapToGrid(rawY);
@@ -107,6 +118,9 @@ function FloorMap() {
     setShowForm(true);
   };
 
+  // ===============================
+  // FORM
+  // ===============================
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -120,32 +134,37 @@ function FloorMap() {
     const newPC = {
       ...formData,
       status: "online",
-      x_position: clickPosition.x,
-      y_position: clickPosition.y,
+      x_position: Math.round(clickPosition.x),
+      y_position: Math.round(clickPosition.y),
       floor: floor
     };
 
     await fetch("http://localhost:5000/api/pcs", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify(newPC)
     });
 
     setShowForm(false);
-    setFormData({ hostname: "", ip_address: "", desk_id: "" });
     setAddMode(false);
+    setFormData({ hostname: "", ip_address: "", desk_id: "" });
 
     fetchData();
   };
 
-  // DRAG DROP
+  // ===============================
+  // DRAG & DROP
+  // ===============================
   const handleDrop = async (e) => {
+
     e.preventDefault();
 
     const rect = e.currentTarget.getBoundingClientRect();
 
-    const rawX = (e.clientX - rect.left) / scale;
-    const rawY = (e.clientY - rect.top) / scale;
+    const rawX = (e.clientX - rect.left - position.x) / scale;
+    const rawY = (e.clientY - rect.top - position.y) / scale;
 
     const x = snapToGrid(rawX);
     const y = snapToGrid(rawY);
@@ -155,7 +174,10 @@ function FloorMap() {
     await fetch(`http://localhost:5000/api/pcs/${pcId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ x_position: x, y_position: y })
+      body: JSON.stringify({
+        x_position: Math.round(x),
+        y_position: Math.round(y)
+      })
     });
 
     fetchData();
@@ -163,12 +185,65 @@ function FloorMap() {
 
   const allowDrop = (e) => e.preventDefault();
 
+  // ===============================
+  // FULL RESET (SHOW ENTIRE MAP)
+  // ===============================
+  const resetView = () => {
+    const viewportWidth = 800;
+    const viewportHeight = 500;
+
+    const imageWidth = 800;
+    const imageHeight = 500;
+
+    const x = (viewportWidth - imageWidth) / 2;
+    const y = (viewportHeight - imageHeight) / 2;
+
+    setScale(1);
+    setPosition({ x, y });
+  };
+
+  // ===============================
+  // SMART RESET (FOCUS DEVICES)
+  // ===============================
+  const smartReset = () => {
+
+    const visiblePCs = pcs.filter(pc => pc.floor === floor);
+    if (visiblePCs.length === 0) return;
+
+    const xs = visiblePCs.map(pc => pc.x_position);
+    const ys = visiblePCs.map(pc => pc.y_position);
+
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+
+    const viewportWidth = 800;
+    const viewportHeight = 500;
+
+    const contentWidth = Math.max(maxX - minX, 100);
+    const contentHeight = Math.max(maxY - minY, 100);
+
+    const scaleX = viewportWidth / (contentWidth + 100);
+    const scaleY = viewportHeight / (contentHeight + 100);
+
+    const newScale = Math.min(Math.max(Math.min(scaleX, scaleY), 0.5), 2);
+
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    const x = viewportWidth / 2 - centerX * newScale;
+    const y = viewportHeight / 2 - centerY * newScale;
+
+    setScale(newScale);
+    setPosition({ x, y });
+  };
+
   const visiblePCs = pcs.filter(pc => pc.floor === floor);
 
   return (
     <div style={{ display: "flex" }}>
 
-      {/* SIDEBAR */}
       <Sidebar
         pcs={visiblePCs}
         onDelete={handleDeleteFromSidebar}
@@ -178,29 +253,37 @@ function FloorMap() {
       <div style={{ padding: "10px" }}>
 
         {/* CONTROLS */}
-        <select value={floor} onChange={(e) => setFloor(e.target.value)}>
-          <option>Floor 1</option>
-          <option>Floor 2</option>
-          <option>Floor 3</option>
-        </select>
+        <div style={{ marginBottom: "10px" }}>
 
-        <input
-          placeholder="Search..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ marginLeft: "10px" }}
-        />
+          <select value={floor} onChange={(e) => setFloor(e.target.value)}>
+            <option>Floor 1</option>
+            <option>Floor 2</option>
+            <option>Floor 3</option>
+          </select>
 
-        <button
-          onClick={() => setAddMode(!addMode)}
-          style={{
-            marginLeft: "10px",
-            background: addMode ? "green" : "gray",
-            color: "white"
-          }}
-        >
-          {addMode ? "Click map to place PC" : "Add PC"}
-        </button>
+          <input
+            placeholder="Search..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ marginLeft: "10px" }}
+          />
+
+          <button
+            onClick={() => setAddMode(!addMode)}
+            style={{ marginLeft: "10px", background: addMode ? "green" : "gray", color: "white" }}
+          >
+            {addMode ? "Click map to place PC" : "Add PC"}
+          </button>
+
+          <button onClick={resetView} style={{ marginLeft: "10px" }}>
+            Reset Layout
+          </button>
+
+          <button onClick={smartReset} style={{ marginLeft: "5px" }}>
+            Focus Devices
+          </button>
+
+        </div>
 
         {/* MAP */}
         <div
@@ -215,6 +298,12 @@ function FloorMap() {
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onDoubleClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            resetView();
+          }}
         >
 
           <div
@@ -225,14 +314,37 @@ function FloorMap() {
             }}
             onDrop={handleDrop}
             onDragOver={allowDrop}
+            onClick={handleMapClick}
           >
 
             <img
               src={floorImages[floor]}
               alt="Floor"
               style={{ width: "800px" }}
-              onClick={handleMapClick}
             />
+
+            {showForm && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                style={{
+                  position: "absolute",
+                  left: clickPosition.x,
+                  top: clickPosition.y,
+                  background: "white",
+                  padding: "10px",
+                  border: "1px solid black",
+                  zIndex: 10000
+                }}
+              >
+                <form onSubmit={handleSubmit}>
+                  <input name="hostname" placeholder="Hostname" onChange={handleChange} required /><br />
+                  <input name="ip_address" placeholder="IP Address" onChange={handleChange} required /><br />
+                  <input name="desk_id" placeholder="Desk" onChange={handleChange} required /><br />
+                  <button type="submit">Save</button>
+                </form>
+              </div>
+            )}
 
             {visiblePCs.map(pc => {
               const isMatch =
