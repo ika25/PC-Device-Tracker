@@ -8,7 +8,6 @@ function FloorMap() {
   const [search, setSearch] = useState("");
   const [floor, setFloor] = useState("Floor 1");
   const [addMode, setAddMode] = useState(false);
-  const [selectedPC, setSelectedPC] = useState(null);
 
   const [showForm, setShowForm] = useState(false);
   const [clickPosition, setClickPosition] = useState({ x: 0, y: 0 });
@@ -71,9 +70,7 @@ function FloorMap() {
     });
   };
 
-  const handleMouseUp = () => {
-    setDraggingMap(false);
-  };
+  const handleMouseUp = () => setDraggingMap(false);
 
   // ===============================
   // FETCH
@@ -99,7 +96,43 @@ function FloorMap() {
   };
 
   // ===============================
-  // ADD PC CLICK
+  // ADD FROM SIDEBAR
+  // ===============================
+  const handleAddFromSidebar = async (device) => {
+
+    const newPC = {
+      ...device,
+      status: "online",
+      x_position: 100,
+      y_position: 100,
+      floor: floor
+    };
+
+    await fetch("http://localhost:5000/api/pcs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newPC)
+    });
+
+    fetchData();
+  };
+
+  // ===============================
+  // UPDATE FROM SIDEBAR
+  // ===============================
+  const handleUpdateFromSidebar = async (id, data) => {
+
+    await fetch(`http://localhost:5000/api/pcs/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+
+    fetchData();
+  };
+
+  // ===============================
+  // ADD PC ON MAP
   // ===============================
   const handleMapClick = (e) => {
 
@@ -141,9 +174,7 @@ function FloorMap() {
 
     await fetch("http://localhost:5000/api/pcs", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newPC)
     });
 
@@ -186,27 +217,14 @@ function FloorMap() {
   const allowDrop = (e) => e.preventDefault();
 
   // ===============================
-  // FULL RESET (SHOW ENTIRE MAP)
+  // RESET
   // ===============================
   const resetView = () => {
-    const viewportWidth = 800;
-    const viewportHeight = 500;
-
-    const imageWidth = 800;
-    const imageHeight = 500;
-
-    const x = (viewportWidth - imageWidth) / 2;
-    const y = (viewportHeight - imageHeight) / 2;
-
     setScale(1);
-    setPosition({ x, y });
+    setPosition({ x: 0, y: 0 });
   };
 
-  // ===============================
-  // SMART RESET (FOCUS DEVICES)
-  // ===============================
   const smartReset = () => {
-
     const visiblePCs = pcs.filter(pc => pc.floor === floor);
     if (visiblePCs.length === 0) return;
 
@@ -247,7 +265,9 @@ function FloorMap() {
       <Sidebar
         pcs={visiblePCs}
         onDelete={handleDeleteFromSidebar}
-        onSelect={(pc) => setSelectedPC(pc)}
+        onSelect={() => {}}
+        onAdd={handleAddFromSidebar}
+        onUpdate={handleUpdateFromSidebar}
       />
 
       <div style={{ padding: "10px" }}>
@@ -317,11 +337,7 @@ function FloorMap() {
             onClick={handleMapClick}
           >
 
-            <img
-              src={floorImages[floor]}
-              alt="Floor"
-              style={{ width: "800px" }}
-            />
+            <img src={floorImages[floor]} alt="Floor" style={{ width: "800px" }} />
 
             {showForm && (
               <div
@@ -347,9 +363,10 @@ function FloorMap() {
             )}
 
             {visiblePCs.map(pc => {
-              const isMatch =
-                pc.hostname.toLowerCase().includes(search.toLowerCase()) ||
-                (selectedPC && selectedPC.id === pc.id);
+
+              const isSearchMatch =
+                search &&
+                pc.hostname.toLowerCase().includes(search.toLowerCase());
 
               return (
                 <PcMarker
@@ -359,7 +376,8 @@ function FloorMap() {
                   status={pc.status}
                   pc={pc}
                   refresh={fetchData}
-                  highlight={isMatch}
+                  isSearchMatch={isSearchMatch}
+                  isSearching={search.length > 0}
                 />
               );
             })}

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-function PcMarker({ x, y, status, pc, refresh, highlight }) {
+function PcMarker({ x, y, status, pc, refresh, isSearchMatch, isSearching }) {
 
   const [showInfo, setShowInfo] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -56,12 +56,20 @@ function PcMarker({ x, y, status, pc, refresh, highlight }) {
   };
 
   // ===============================
-  // GLOW COLOR LOGIC
+  // GLOW LOGIC (FINAL)
   // ===============================
   const getGlow = () => {
-    if (highlight) return "drop-shadow(0 0 6px yellow)";
-    if (status === "online") return "drop-shadow(0 0 6px green)";
-    if (status === "offline") return "drop-shadow(0 0 6px red)";
+
+    // 🟢 SEARCH MATCH (MAIN FOCUS)
+    if (isSearchMatch) return "drop-shadow(0 0 8px lime)";
+
+    // 🟡 OTHERS WHEN SEARCHING
+    if (isSearching) return "drop-shadow(0 0 5px gold)";
+
+    // NORMAL STATUS
+    if (status === "online") return "drop-shadow(0 0 5px green)";
+    if (status === "offline") return "drop-shadow(0 0 5px red)";
+
     return "none";
   };
 
@@ -87,11 +95,14 @@ function PcMarker({ x, y, status, pc, refresh, highlight }) {
           top: y,
           transform: "translate(-50%, -50%)",
           cursor: "grab",
-          zIndex: 9999
+          zIndex: 9999,
+
+          // 🔥 OPTIONAL FADE EFFECT
+          opacity: isSearching && !isSearchMatch ? 0.4 : 1
         }}
       >
         <img
-          src="/pc.png"   // 👉 make sure this exists in /public
+          src="/pc.png"
           alt="PC"
           style={{
             width: "24px",
